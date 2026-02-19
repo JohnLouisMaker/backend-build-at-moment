@@ -1,5 +1,4 @@
 import enum
-
 from sqlalchemy import (
     Boolean,
     Column,
@@ -21,7 +20,7 @@ base = declarative_base()
 
 # Criando Classe/Tabela
 # TABELA USUARIOS
-class Users(base):
+class UsersModel(base):
     __tablename__ = "usuario"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)

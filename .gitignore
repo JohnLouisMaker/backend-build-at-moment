@@ -1,0 +1,39 @@
+# --- Ambiente ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# --- Virtualenv ---
+venv/
+.venv/
+env/
+ENV/
+
+# --- Logs ---
+*.log
+
+# --- IDEs ---
+.vscode/
+.idea/
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db
+
+# --- Testes / cache ---
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Build ---
+dist/
+build/
+*.egg-info/
