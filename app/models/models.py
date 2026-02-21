@@ -1,4 +1,5 @@
 import enum
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -12,7 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import declarative_base
 
 # Conexão Do Meu Banco
-db = create_engine("sqlite:///database/database.db")
+db = create_engine("sqlite:///./app/database/database.db")
 
 # Base Do Meu Banco
 base = declarative_base()

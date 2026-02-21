@@ -3,8 +3,8 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from routes.auth_routes import auth_router
-from routes.order_routes import order_router
+from app.routes.auth_routes import auth_router
+from app.routes.order_routes import order_router
 
 load_dotenv()
 
