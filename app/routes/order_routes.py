@@ -2,21 +2,23 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.dependencies import make_session
-from app.models.models import Pedidos
-from app.schemas.schemas import pedidosSchema
+from app.models.models import PedidoModel
+from app.schemas.schemas import PedidoSchema
 
 order_router = APIRouter(prefix="/pedidos", tags=["orders"])
 
 
 @order_router.get("/")
-async def pedidos():
+async def listar_pedidos():
     return {"message": "Get all orders"}
 
 
-@order_router.post("/pedido")
-async def pedido(schema: pedidosSchema, db: Session = Depends(make_session)):
-    novo_pedido = Pedidos(usuario=schema.usuario)
+@order_router.post("/")
+async def criar_pedido(schema: PedidoSchema, db: Session = Depends(make_session)):
+    novo_pedido = PedidoModel(usuario_id=schema.usuario_id)
     db.add(novo_pedido)
     db.commit()
     db.refresh(novo_pedido)
-    return {"message": "Pedido realizado com sucesso!"}
+    return {
+        "message": f"Pedido realizado com sucesso! ID do pedido: {novo_pedido.id}"
+    }

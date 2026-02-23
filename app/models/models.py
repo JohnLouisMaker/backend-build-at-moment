@@ -16,12 +16,11 @@ from sqlalchemy.orm import declarative_base
 db = create_engine("sqlite:///./app/database/database.db")
 
 # Base Do Meu Banco
-base = declarative_base()
+Base = declarative_base()
 
 
-# Criando Classe/Tabela
 # TABELA USUARIOS
-class UsersModel(base):
+class UserModel(Base):
     __tablename__ = "usuario"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -46,22 +45,22 @@ class Status(enum.Enum):
     CANCELADO = "Cancelado"
 
 
-class Pedidos(base):
+class PedidoModel(Base):
     __tablename__ = "pedidos"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    usuario = Column("usuario", Integer, ForeignKey("usuario.id"), nullable=False)
-    status = Column("status", Enum(Status), nullable=False, default=Status.PENDENTE)
-    preco = Column("preco", Float, nullable=False)
+    usuario_id = Column("usuario", Integer, ForeignKey("usuario.id"), nullable=False)
+    status = Column(Enum(Status), nullable=False, default=Status.PENDENTE)
+    preco = Column(Float, nullable=False)
 
-    def __init__(self, usuario, status=Status.PENDENTE, preco=0):
+    def __init__(self, usuario_id, status=Status.PENDENTE, preco=0):
         self.status = status
-        self.usuario = usuario
+        self.usuario_id = usuario_id
         self.preco = preco
 
 
 # TABELA ITENS DE PEDIDOS
-class ItensPedidos(base):
+class ItemPedidoModel(Base):
     __tablename__ = "itens_pedidos"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -69,11 +68,11 @@ class ItensPedidos(base):
     sabor = Column(String(100), nullable=False)
     tamanho = Column(String(100), nullable=False)
     preco_unitario = Column(Float, nullable=False)
-    pedido = Column(Integer, ForeignKey("pedidos.id"), nullable=False)
+    pedido_id = Column("pedido", Integer, ForeignKey("pedidos.id"), nullable=False)
 
-    def __init__(self, quantidade, sabor, tamanho, preco_unitario, pedido):
+    def __init__(self, quantidade, sabor, tamanho, preco_unitario, pedido_id):
         self.quantidade = quantidade
         self.sabor = sabor
         self.tamanho = tamanho
         self.preco_unitario = preco_unitario
-        self.pedido = pedido
+        self.pedido_id = pedido_id
