@@ -10,7 +10,7 @@ from app.core.config import (
     REFRESH_TOKEN_EXPIRE,
     SECRET_KEY,
 )
-from app.dependencies import make_session
+from app.dependencies import make_session, verify_token
 from app.models.models import UserModel
 from app.schemas.schemas import LoginSchema, UserSchema
 from app.security import bcrypt_context
@@ -20,20 +20,25 @@ auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
 def authenticate(email: str, senha: str, session: Session) -> UserModel | None:
     user = session.query(UserModel).filter(UserModel.email == email).first()
-    if not user:
-        return None
-    if not bcrypt_context.verify(senha, user.senha):
-        return None
-    return user
+    if user and bcrypt_context.verify(senha, user.senha):
+        return user
+    return None
 
 
 def create_token(id: int, token_type: str, duration: timedelta):
     now = datetime.now(timezone.utc)
-    expire = now + duration
-    payload_info = {"sub": str(id), "type": token_type, "iat": now, "exp": expire}
+    payload_info = {
+        "sub": str(id),
+        "type": token_type,
+        "iat": now,
+        "exp": now + duration,
+    }
     jwt_token = jwt.encode(payload_info, SECRET_KEY, algorithm=ALGORITHM)
     return jwt_token
 
+
+# ----------------------------------------
+# ----------------------------------------
 
 @auth_router.get("/")
 async def home():
@@ -75,5 +80,16 @@ async def login(schema: LoginSchema, db: Session = Depends(make_session)):
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
+        "token_type": "Bearer",
+    }
+
+
+@auth_router.post("/refresh")
+async def refresh_token(user: UserModel = Depends(verify_token)):
+    access_token = create_token(
+        user.id, token_type="access", duration=timedelta(minutes=ACCESS_TOKEN_EXPIRE)
+    )
+    return {
+        "access_token": access_token,
         "token_type": "Bearer",
     }
