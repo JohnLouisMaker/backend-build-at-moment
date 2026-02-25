@@ -40,6 +40,7 @@ def create_token(id: int, token_type: str, duration: timedelta):
 # ----------------------------------------
 # ----------------------------------------
 
+
 @auth_router.get("/")
 async def home():
     return {"message": "Auth"}
