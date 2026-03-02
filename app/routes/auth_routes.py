@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
 from sqlalchemy.orm import Session
 
@@ -85,8 +86,37 @@ async def login(schema: LoginSchema, db: Session = Depends(make_session)):
     }
 
 
+@auth_router.post("/loginform")
+async def loginform(schema: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(make_session)):
+    user = authenticate(schema.username, schema.password, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+
+    access_token = create_token(
+        user.id,
+        token_type="access",
+        duration=timedelta(minutes=ACCESS_TOKEN_EXPIRE),
+    )
+
+    refresh_token = create_token(
+        user.id,
+        token_type="refresh",
+        duration=timedelta(days=REFRESH_TOKEN_EXPIRE),
+    )
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "Bearer",
+    }
+
+
 @auth_router.post("/refresh")
-async def refresh_token(user: UserModel = Depends(verify_token)):
+async def refresh_token(data=Depends(verify_token)):
+    user, token_type = data
+
+    if token_type != "refresh":
+        raise HTTPException(status_code=401, detail="Refresh token necessário")
     access_token = create_token(
         user.id, token_type="access", duration=timedelta(minutes=ACCESS_TOKEN_EXPIRE)
     )
