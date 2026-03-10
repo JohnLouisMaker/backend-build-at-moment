@@ -54,7 +54,13 @@ async def signup(schema: UserSchema, db: Session = Depends(make_session)):
         raise HTTPException(status_code=400, detail="Email já cadastrado")
     else:
         password_hash = bcrypt_context.hash(schema.senha)
-        new_user = UserModel(nome=schema.nome, email=schema.email, senha=password_hash)
+        new_user = UserModel(
+            nome=schema.nome,
+            email=schema.email,
+            senha=password_hash,
+            ativo=schema.ativo,
+            admin=schema.admin,
+        )
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
@@ -87,7 +93,9 @@ async def login(schema: LoginSchema, db: Session = Depends(make_session)):
 
 
 @auth_router.post("/loginform")
-async def loginform(schema: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(make_session)):
+async def loginform(
+    schema: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(make_session)
+):
     user = authenticate(schema.username, schema.password, db)
     if not user:
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
@@ -112,14 +120,24 @@ async def loginform(schema: OAuth2PasswordRequestForm = Depends(), db: Session =
 
 
 @auth_router.post("/refresh")
-async def refresh_token(data=Depends(verify_token)):
-    user, token_type = data
+async def refresh_token(
+    data: dict = Depends(verify_token), db: Session = Depends(make_session)
+):
+
+    token_type = data.get("type")
+    user_id = data.get("sub")
 
     if token_type != "refresh":
         raise HTTPException(status_code=401, detail="Refresh token necessário")
+
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuário inexistente")
+
     access_token = create_token(
         user.id, token_type="access", duration=timedelta(minutes=ACCESS_TOKEN_EXPIRE)
     )
+
     return {
         "access_token": access_token,
         "token_type": "Bearer",

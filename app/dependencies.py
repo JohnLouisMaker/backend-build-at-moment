@@ -16,19 +16,23 @@ def make_session():
         session.close()
 
 
-def verify_token(
-    token: str = Depends(oauth2_schema), session: Session = Depends(make_session)
-):
+# REFRESH
+def verify_token(token: str = Depends(oauth2_schema)):
     try:
-        payload_info = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload_info["sub"]
-        token_type = payload_info["type"]
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
     except JWTError:
-        print(JWTError)
         raise HTTPException(status_code=401, detail="Token inválido ou expirado.")
 
-    user = session.query(UserModel).filter(UserModel.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="Usuário não autorizado.")
 
-    return user, token_type
+# VALIDAÇÃO DO USER E TOKEN ACCESS
+def get_current_user(
+    payload: dict = Depends(verify_token), session: Session = Depends(make_session)
+):
+    if payload.get("type") != "access":
+        raise HTTPException(status_code=401, detail="Token de acesso exigido.")
+
+    user = session.query(UserModel).filter(UserModel.id == payload.get("sub")).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuário não encontrado.")
+    return user
