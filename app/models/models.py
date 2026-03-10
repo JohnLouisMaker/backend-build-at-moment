@@ -67,7 +67,7 @@ class PedidoModel(Base):
         self.preco = (self.preco or 0.0) + valor_novo_item
         return self.preco
     
-    def remover_item_do_total(self, quantidade, preco_unitario):
+    def subtrair_item_do_total(self, quantidade, preco_unitario):
         valor_removido = quantidade * preco_unitario
         novo_preco = (self.preco or 0.0) - valor_removido
         

@@ -66,7 +66,7 @@ async def adicionar_item(
     pedido_id: int,
     schema: ItemPedidoSchema,
     current_user: UserModel = Depends(get_current_user),
-    db: Session = Depends(make_session),
+    db: Session = Depends(make_session)
 ):
     pedido = db.query(PedidoModel).filter(PedidoModel.id == pedido_id).first()
 
@@ -102,3 +102,40 @@ async def adicionar_item(
         "item": new_item,
         "total_pedido": pedido.preco,
     }
+
+
+@order_router.post("/remover_item/{pedido_id}/{item_id}")
+async def remover_item( 
+    pedido_id: int,
+    item_id: int,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(make_session)):
+    
+    pedido = db.query(PedidoModel).filter(PedidoModel.id == pedido_id).first()
+    if not pedido:
+         raise HTTPException(status_code=404, detail="Pedido não encontrado")
+                            
+    is_owner = pedido.usuario_id == current_user.id
+    if not current_user.admin and not is_owner:
+        raise HTTPException( status_code=403,
+            detail="Acesso negado: você não tem permissão para realizar esta ação.")
+
+    if pedido.status == Status.CANCELADO:
+         return {"message": "Este pedido já está cancelado!"}
+
+    item = db.query(ItemPedidoModel).filter(ItemPedidoModel.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item não encontrado neste pedido")
+    
+    pedido.subtrair_item_do_total(item.quantidade, item.preco_unitario)
+    db.delete(item)
+    db.add(pedido)
+    db.commit()
+    db.refresh(pedido)
+
+    return {
+        "message": "Item removido com sucesso",
+        "total_pedido_atualizado": pedido.preco
+    }
+
+
