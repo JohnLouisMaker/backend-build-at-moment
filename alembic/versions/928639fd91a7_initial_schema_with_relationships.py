@@ -1,8 +1,8 @@
-"""start migration
+"""initial_schema_with_relationships
 
-Revision ID: 8b01de3324a8
+Revision ID: 928639fd91a7
 Revises: 
-Create Date: 2026-02-23 15:41:55.253138
+Create Date: 2026-03-10 06:00:39.289526
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '8b01de3324a8'
+revision: str = '928639fd91a7'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -33,10 +33,10 @@ def upgrade() -> None:
     )
     op.create_table('pedidos',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('usuario', sa.Integer(), nullable=False),
+    sa.Column('usuario_id', sa.Integer(), nullable=False),
     sa.Column('status', sa.Enum('FINALIZADO', 'PENDENTE', 'CANCELADO', name='status'), nullable=False),
     sa.Column('preco', sa.Float(), nullable=False),
-    sa.ForeignKeyConstraint(['usuario'], ['usuario.id'], ),
+    sa.ForeignKeyConstraint(['usuario_id'], ['usuario.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('itens_pedidos',
@@ -45,8 +45,8 @@ def upgrade() -> None:
     sa.Column('sabor', sa.String(length=100), nullable=False),
     sa.Column('tamanho', sa.String(length=100), nullable=False),
     sa.Column('preco_unitario', sa.Float(), nullable=False),
-    sa.Column('pedido', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['pedido'], ['pedidos.id'], ),
+    sa.Column('pedido_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['pedido_id'], ['pedidos.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###
