@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.dependencies import get_current_user, make_session
 from app.models.models import ItemPedidoModel, PedidoModel, Status, UserModel
@@ -19,8 +19,26 @@ async def listar_pedidos(
             status_code=403, detail="Acesso negado: apenas administradores."
         )
 
-    pedidos = db.query(PedidoModel).all()
+    pedidos = db.query(PedidoModel).options(joinedload(PedidoModel.itens)).all()
     return {"pedidos": pedidos}
+
+
+@order_router.get("/pedido/{pedido_id}")
+async def visualizar_pedido(pedido_id: int, 
+                            db: Session = Depends(make_session), 
+                            current_user: UserModel = Depends(get_current_user)):
+    
+    pedido = db.query(PedidoModel).filter(PedidoModel.id == pedido_id).first()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não ncontrado")
+    
+    is_owner = pedido.usuario_id == current_user.id
+    if not current_user.admin and not is_owner:
+        raise HTTPException(
+            status_code=403, detail="Sem permissão para visualizar este pedido"
+        )
+
+    return {"pedido": pedido}
 
 
 @order_router.post("/criar_pedido")
@@ -61,12 +79,37 @@ async def cancelar_pedido(
     return {"message": f"Pedido {pedido_id} cancelado com sucesso"}
 
 
+@order_router.post("/finalizar/{pedido_id}")
+async def finalizar_pedido(
+    pedido_id: int,
+    db: Session = Depends(make_session),
+    current_user: UserModel = Depends(get_current_user),
+):
+    pedido = db.query(PedidoModel).filter(PedidoModel.id == pedido_id).first()
+
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+
+    is_owner = pedido.usuario_id == current_user.id
+    if not current_user.admin and not is_owner:
+        raise HTTPException(
+            status_code=403, detail="Sem permissão para finalizar este pedido"
+        )
+
+    if pedido.status == Status.FINALIZADO:
+        return {"message": "Este pedido já está finalizado!"}
+
+    pedido.status = Status.FINALIZADO
+    db.commit()
+    return {"message": f"Pedido {pedido_id} finalizado com sucesso"}
+
+
 @order_router.post("/adicionar_item/{pedido_id}")
 async def adicionar_item(
     pedido_id: int,
     schema: ItemPedidoSchema,
     current_user: UserModel = Depends(get_current_user),
-    db: Session = Depends(make_session)
+    db: Session = Depends(make_session),
 ):
     pedido = db.query(PedidoModel).filter(PedidoModel.id == pedido_id).first()
 
@@ -104,29 +147,36 @@ async def adicionar_item(
     }
 
 
-@order_router.post("/remover_item/{pedido_id}/{item_id}")
-async def remover_item( 
+@order_router.delete("/remover_item/{pedido_id}/{item_id}")
+async def remover_item(
     pedido_id: int,
     item_id: int,
     current_user: UserModel = Depends(get_current_user),
-    db: Session = Depends(make_session)):
-    
+    db: Session = Depends(make_session),
+):
+
     pedido = db.query(PedidoModel).filter(PedidoModel.id == pedido_id).first()
     if not pedido:
-         raise HTTPException(status_code=404, detail="Pedido não encontrado")
-                            
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+
     is_owner = pedido.usuario_id == current_user.id
     if not current_user.admin and not is_owner:
-        raise HTTPException( status_code=403,
-            detail="Acesso negado: você não tem permissão para realizar esta ação.")
+        raise HTTPException(
+            status_code=403,
+            detail="Acesso negado: você não tem permissão para realizar esta ação.",
+        )
 
     if pedido.status == Status.CANCELADO:
-         return {"message": "Este pedido já está cancelado!"}
+        return {"message": "Este pedido já está cancelado!"}
 
-    item = db.query(ItemPedidoModel).filter(ItemPedidoModel.id == item_id).first()
+    item = (
+        db.query(ItemPedidoModel)
+        .filter(ItemPedidoModel.id == item_id, ItemPedidoModel.pedido_id == pedido_id)
+        .first()
+    )
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado neste pedido")
-    
+
     pedido.subtrair_item_do_total(item.quantidade, item.preco_unitario)
     db.delete(item)
     db.add(pedido)
@@ -135,7 +185,5 @@ async def remover_item(
 
     return {
         "message": "Item removido com sucesso",
-        "total_pedido_atualizado": pedido.preco
+        "total_pedido_atualizado": pedido.preco,
     }
-
-

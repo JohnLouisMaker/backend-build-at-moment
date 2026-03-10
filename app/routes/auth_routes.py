@@ -37,6 +37,18 @@ def create_token(id: int, token_type: str, duration: timedelta):
     jwt_token = jwt.encode(payload_info, SECRET_KEY, algorithm=ALGORITHM)
     return jwt_token
 
+def generate_auth_tokens(user_id: int):
+    access_token = create_token(
+        user_id,
+        token_type="access",
+        duration=timedelta(minutes=ACCESS_TOKEN_EXPIRE),
+    )
+    refresh_token = create_token(
+        user_id,
+        token_type="refresh",
+        duration=timedelta(days=REFRESH_TOKEN_EXPIRE),
+    )
+    return access_token, refresh_token
 
 # ----------------------------------------
 # ----------------------------------------
@@ -61,10 +73,18 @@ async def signup(schema: UserSchema, db: Session = Depends(make_session)):
             ativo=schema.ativo,
             admin=schema.admin,
         )
+
+        
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        return {"message": f"Cadastro realizado com sucesso! Bem-vindo {schema.nome}"}
+        access_token, refresh_token = generate_auth_tokens(new_user.id)
+        return {
+            "message": f"Cadastro realizado com sucesso! Bem-vindo {new_user.nome}",
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "Bearer",
+        }
 
 
 @auth_router.post("/login")
@@ -73,18 +93,8 @@ async def login(schema: LoginSchema, db: Session = Depends(make_session)):
     if not user:
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
-    access_token = create_token(
-        user.id,
-        token_type="access",
-        duration=timedelta(minutes=ACCESS_TOKEN_EXPIRE),
-    )
-
-    refresh_token = create_token(
-        user.id,
-        token_type="refresh",
-        duration=timedelta(days=REFRESH_TOKEN_EXPIRE),
-    )
-
+    
+    access_token, refresh_token = generate_auth_tokens(user.id)
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -99,18 +109,8 @@ async def loginform(
     user = authenticate(schema.username, schema.password, db)
     if not user:
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
-
-    access_token = create_token(
-        user.id,
-        token_type="access",
-        duration=timedelta(minutes=ACCESS_TOKEN_EXPIRE),
-    )
-
-    refresh_token = create_token(
-        user.id,
-        token_type="refresh",
-        duration=timedelta(days=REFRESH_TOKEN_EXPIRE),
-    )
+    
+    access_token, refresh_token = generate_auth_tokens(user.id)
 
     return {
         "access_token": access_token,
@@ -134,9 +134,7 @@ async def refresh_token(
     if not user:
         raise HTTPException(status_code=401, detail="Usuário inexistente")
 
-    access_token = create_token(
-        user.id, token_type="access", duration=timedelta(minutes=ACCESS_TOKEN_EXPIRE)
-    )
+    access_token, _ = generate_auth_tokens(user.id)
 
     return {
         "access_token": access_token,
