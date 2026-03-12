@@ -5,12 +5,12 @@ from app.routes.order_routes import order_router
 
 app = FastAPI()
 
-# Incluindo Rotas
+# INCLUINDO ROTAS
 app.include_router(auth_router)
 app.include_router(order_router)
 
 
-# Rota Raiz
+# ROTA RAIZ
 @app.get("/")
 async def root():
     return {"message": "API Python com FastAPI!"}

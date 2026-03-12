@@ -3,11 +3,9 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.dependencies import get_current_user, make_session
 from app.models.models import ItemPedidoModel, PedidoModel, Status, UserModel
-from app.schemas.schemas import ItemPedidoSchema
+from app.schemas.schemas import PedidoSchemaResponse, ItemPedidoSchema
 
 order_router = APIRouter(prefix="/pedidos", tags=["orders"])
-
-
 
 def verificar_permissao_pedido(pedido, current_user):
     if current_user.admin:
@@ -19,10 +17,11 @@ def verificar_permissao_pedido(pedido, current_user):
         )
     return True
 
-#------------------------------------------------------------------------------
-# --- ROTAS ---
+# ----------------------------------------
+# ----------------------------------------
+# ROTAS
 
-@order_router.get("/")
+@order_router.get("/", response_model=dict[str, list[PedidoSchemaResponse]])
 async def listar_pedidos(
     db: Session = Depends(make_session),
     current_user: UserModel = Depends(get_current_user),
@@ -35,13 +34,12 @@ async def listar_pedidos(
     pedidos = db.query(PedidoModel).options(joinedload(PedidoModel.itens)).all()
     return {"pedidos": pedidos}
 
-@order_router.get("/pedido/{pedido_id}")
+@order_router.get("/pedido/{pedido_id}", response_model=PedidoSchemaResponse)
 async def visualizar_pedido(
     pedido_id: int,
     db: Session = Depends(make_session),
     current_user: UserModel = Depends(get_current_user),
 ):
-  
     pedido = db.query(PedidoModel).options(joinedload(PedidoModel.itens)).filter(PedidoModel.id == pedido_id).first()
     
     if not pedido:
@@ -49,15 +47,14 @@ async def visualizar_pedido(
 
     verificar_permissao_pedido(pedido, current_user)
 
-    return {"pedido": pedido}
+    return pedido
 
-@order_router.get("/listar/{usuario_id}")
+@order_router.get("/listar/{usuario_id}", response_model=dict[str, list[PedidoSchemaResponse]])
 async def listar_pedidos_usuario(
     usuario_id: int,
     db: Session = Depends(make_session),
     current_user: UserModel = Depends(get_current_user),
 ):
-
     if not current_user.admin and current_user.id != usuario_id:
         raise HTTPException(
             status_code=403, detail="Acesso negado: você não tem permissão."

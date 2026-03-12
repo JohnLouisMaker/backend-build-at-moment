@@ -1,19 +1,15 @@
-from typing import Optional
-
+from typing import Optional, List
 from pydantic import BaseModel
 
-
+# --- USUÁRIO ---
 class UserSchema(BaseModel):
     nome: str
     email: str
     senha: str
-    ativo: Optional[bool]
-    admin: Optional[bool]
+    ativo: Optional[bool] = True
+    admin: Optional[bool] = False
 
-    class Config:
-        from_attributes = True
-
-
+# --- LOGIN ---
 class LoginSchema(BaseModel):
     email: str
     senha: str
@@ -22,18 +18,35 @@ class LoginSchema(BaseModel):
         from_attributes = True
 
 
-class PedidoSchema(BaseModel):
-    usuario_id: int
+# --- ITENS DE PEDIDO ---
+class ItemPedidoSchema(BaseModel):
+    quantidade: int
+    sabor: str
+    tamanho: str
+    preco_unitario: float
+
+class ItemPedidoSchemaResponse(BaseModel):
+    id: int
+    quantidade: int
+    sabor: str
+    tamanho: str
+    preco_unitario: float
 
     class Config:
         from_attributes = True
 
 
-class ItemPedidoSchema(BaseModel):
-    quantidade: int
-    sabor:  str
-    tamanho: str
-    preco_unitario: float
+# --- PEDIDO ---
+class PedidoSchema(BaseModel):
+    usuario_id: int
+
+class PedidoSchemaResponse(BaseModel):
+
+    id: int
+    usuario_id: int 
+    status: str
+    preco: float
+    itens: List[ItemPedidoSchemaResponse] = [] 
 
     class Config:
         from_attributes = True

@@ -52,7 +52,7 @@ def generate_auth_tokens(user_id: int):
 
 # ----------------------------------------
 # ----------------------------------------
-
+# ROTAS
 
 @auth_router.get("/")
 async def home():
