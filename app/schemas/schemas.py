@@ -1,5 +1,8 @@
-from typing import Optional, List
-from pydantic import BaseModel
+from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict
+
 
 # --- USUÁRIO ---
 class UserSchema(BaseModel):
@@ -9,13 +12,11 @@ class UserSchema(BaseModel):
     ativo: Optional[bool] = True
     admin: Optional[bool] = False
 
+
 # --- LOGIN ---
 class LoginSchema(BaseModel):
     email: str
     senha: str
-
-    class Config:
-        from_attributes = True
 
 
 # --- ITENS DE PEDIDO ---
@@ -25,6 +26,7 @@ class ItemPedidoSchema(BaseModel):
     tamanho: str
     preco_unitario: float
 
+
 class ItemPedidoSchemaResponse(BaseModel):
     id: int
     quantidade: int
@@ -32,21 +34,21 @@ class ItemPedidoSchemaResponse(BaseModel):
     tamanho: str
     preco_unitario: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- PEDIDO ---
-class PedidoSchema(BaseModel):
-    usuario_id: int
+class StatusSchema(str, Enum):
+    FINALIZADO = "FINALIZADO"
+    PENDENTE = "PENDENTE"
+    CANCELADO = "CANCELADO"
+
 
 class PedidoSchemaResponse(BaseModel):
-
     id: int
-    usuario_id: int 
-    status: str
+    usuario_id: int
+    status: StatusSchema
     preco: float
-    itens: List[ItemPedidoSchemaResponse] = [] 
+    itens: List[ItemPedidoSchemaResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

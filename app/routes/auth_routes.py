@@ -11,7 +11,7 @@ from app.core.config import (
     REFRESH_TOKEN_EXPIRE,
     SECRET_KEY,
 )
-from app.dependencies import make_session, verify_token
+from app.dependencies import get_current_user, make_session, verify_token
 from app.models.models import UserModel
 from app.schemas.schemas import LoginSchema, UserSchema
 from app.security import bcrypt_context
@@ -19,6 +19,7 @@ from app.security import bcrypt_context
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+# FUNÇÃO DE AUTENTICAÇÃO (Email e Senha estão corretos?? Existe o usuário??)
 def authenticate(email: str, senha: str, session: Session) -> UserModel | None:
     user = session.query(UserModel).filter(UserModel.email == email).first()
     if user and bcrypt_context.verify(senha, user.senha):
@@ -26,6 +27,7 @@ def authenticate(email: str, senha: str, session: Session) -> UserModel | None:
     return None
 
 
+# FUNÇÃO DE CRIAÇÃO DE TOKEN
 def create_token(id: int, token_type: str, duration: timedelta):
     now = datetime.now(timezone.utc)
     payload_info = {
@@ -37,6 +39,8 @@ def create_token(id: int, token_type: str, duration: timedelta):
     jwt_token = jwt.encode(payload_info, SECRET_KEY, algorithm=ALGORITHM)
     return jwt_token
 
+
+# FUNÇÃO DE GERADOR DE TOKEN (ACCESS E REFRESH)
 def generate_auth_tokens(user_id: int):
     access_token = create_token(
         user_id,
@@ -50,15 +54,25 @@ def generate_auth_tokens(user_id: int):
     )
     return access_token, refresh_token
 
+
 # ----------------------------------------
 # ----------------------------------------
 # ROTAS
 
-@auth_router.get("/")
-async def home():
-    return {"message": "Auth"}
+
+# RETORNA O USUARIO LOGADO
+@auth_router.get("/me")
+async def me(current_user: UserModel = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "nome": current_user.nome,
+        "email": current_user.email,
+        "admin": current_user.admin,
+        "ativo": current_user.ativo,
+    }
 
 
+# CRIA UM NOVO USUARIO - SIGNUP
 @auth_router.post("/signup", status_code=201)
 async def signup(schema: UserSchema, db: Session = Depends(make_session)):
     user_exists = db.query(UserModel).filter(UserModel.email == schema.email).first()
@@ -74,7 +88,6 @@ async def signup(schema: UserSchema, db: Session = Depends(make_session)):
             admin=schema.admin,
         )
 
-        
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
@@ -87,13 +100,13 @@ async def signup(schema: UserSchema, db: Session = Depends(make_session)):
         }
 
 
+# LOGIN
 @auth_router.post("/login")
 async def login(schema: LoginSchema, db: Session = Depends(make_session)):
     user = authenticate(schema.email, schema.senha, db)
     if not user:
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
-    
     access_token, refresh_token = generate_auth_tokens(user.id)
     return {
         "access_token": access_token,
@@ -102,6 +115,7 @@ async def login(schema: LoginSchema, db: Session = Depends(make_session)):
     }
 
 
+# LOGIN VIA FORM
 @auth_router.post("/loginform")
 async def loginform(
     schema: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(make_session)
@@ -109,7 +123,7 @@ async def loginform(
     user = authenticate(schema.username, schema.password, db)
     if not user:
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
-    
+
     access_token, refresh_token = generate_auth_tokens(user.id)
 
     return {
@@ -119,6 +133,7 @@ async def loginform(
     }
 
 
+# REFRESH TOKEN
 @auth_router.post("/refresh")
 async def refresh_token(
     data: dict = Depends(verify_token), db: Session = Depends(make_session)

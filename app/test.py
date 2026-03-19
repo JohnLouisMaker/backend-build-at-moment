@@ -1,9 +1,11 @@
-# import requests
+# from fastapi.testclient import TestClient
+# from sqlalchemy.orm import Session
+# from app.main import app
+# from app.dependencies import make_session
 
-# header = {
-#     "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1IiwidHlwZSI6InJlZnJlc2giLCJpYXQiOjE3NzI0Njk0NzAsImV4cCI6MTc3MzA3NDI3MH0.1r_N-yaIT3baVTuxRvAn-7n7BlQ49c0u2SY5Swi8MPs"
-# }
+# client = TestClient(app)
 
-# response = requests.post("http://127.0.0.1:8000/auth/refresh", headers=header)
-# print(response)
-# print(response.json())
+# def test_orders():
+#     with make_session() as Session:
+#         response = client.get("/pedidos/")
+#         assert response.status_code == 200
