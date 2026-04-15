@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app.dependencies import get_current_user, make_session
-from app.models.models import ItemPedidoModel, PedidoModel, UserModel
-from app.schemas.schemas import StatusSchema,PedidoSchemaResponse, ItemPedidoSchema
+from app.models.models import ItemPedidoModel, PedidoModel, UserModel, StatusEnum
+from app.schemas.schemas import PedidoSchemaResponse, ItemPedidoSchema
 
 order_router = APIRouter(prefix="/pedidos", tags=["orders"])
 
-# FUNÇÃO DE PERMISSÃO (O usuário é dono do pedido ou é Admin?)
+
 def verificar_permissao_pedido(pedido, current_user):
     if current_user.admin:
         return True
@@ -18,11 +18,7 @@ def verificar_permissao_pedido(pedido, current_user):
         )
     return True
 
-# ----------------------------------------
-# ----------------------------------------
-# ROTAS
 
-# LISTAR TODOS OS PEDIDOS (Apenas para Admins)
 @order_router.get("/", response_model=dict[str, list[PedidoSchemaResponse]])
 async def listar_pedidos(
     db: Session = Depends(make_session),
@@ -37,7 +33,6 @@ async def listar_pedidos(
     return {"pedidos": pedidos}
 
 
-# VISUALIZAR UM PEDIDO ESPECÍFICO (Dono do pedido ou Admin)
 @order_router.get("/pedido/{pedido_id}", response_model=PedidoSchemaResponse)
 async def visualizar_pedido(
     pedido_id: int,
@@ -54,7 +49,6 @@ async def visualizar_pedido(
     return pedido
 
 
-# LISTAR PEDIDOS DE UM USUÁRIO ESPECÍFICO (Dono do pedido ou Admin)
 @order_router.get("/listar/{usuario_id}", response_model=dict[str, list[PedidoSchemaResponse]])
 async def listar_pedidos_usuario(
     usuario_id: int,
@@ -70,7 +64,6 @@ async def listar_pedidos_usuario(
     return {"pedidos": pedidos}
 
 
-# CRIAR UM NOVO PEDIDO VAZIO
 @order_router.post("/criar_pedido")
 async def criar_pedido(
     db: Session = Depends(make_session),
@@ -83,7 +76,6 @@ async def criar_pedido(
     return {"message": "Pedido realizado com sucesso!", "id": novo_pedido.id}
 
 
-# CANCELAR UM PEDIDO EXISTENTE (Dono do pedido ou Admin)
 @order_router.post("/cancelar/{pedido_id}")
 async def cancelar_pedido(
     pedido_id: int,
@@ -97,18 +89,17 @@ async def cancelar_pedido(
 
     verificar_permissao_pedido(pedido, current_user)
 
-    if pedido.status == StatusSchema.FINALIZADO:
+    if pedido.status == StatusEnum.FINALIZADO:
         return {"message": "Este pedido já está finalizado!"}
 
-    if pedido.status == StatusSchema.CANCELADO:
+    if pedido.status == StatusEnum.CANCELADO:
         return {"message": "Este pedido já está cancelado!"}
 
-    pedido.status = StatusSchema.CANCELADO
+    pedido.status = StatusEnum.CANCELADO
     db.commit()
     return {"message": f"Pedido {pedido_id} cancelado com sucesso"}
 
 
-# FINALIZAR UM PEDIDO (Fechar carrinho)
 @order_router.post("/finalizar/{pedido_id}")
 async def finalizar_pedido(
     pedido_id: int,
@@ -122,18 +113,17 @@ async def finalizar_pedido(
 
     verificar_permissao_pedido(pedido, current_user)
 
-    if pedido.status == StatusSchema.CANCELADO:
+    if pedido.status == StatusEnum.CANCELADO:
         return {"message": "Este pedido já está cancelado!"}
 
-    if pedido.status == StatusSchema.FINALIZADO:
+    if pedido.status == StatusEnum.FINALIZADO:
         return {"message": "Este pedido já está finalizado!"}
 
-    pedido.status = StatusSchema.FINALIZADO
+    pedido.status = StatusEnum.FINALIZADO
     db.commit()
     return {"message": f"Pedido {pedido_id} finalizado com sucesso"}
 
 
-# ADICIONAR ITEM AO PEDIDO (Atualiza o total automaticamente)
 @order_router.post("/adicionar_item/{pedido_id}")
 async def adicionar_item(
     pedido_id: int,
@@ -148,8 +138,8 @@ async def adicionar_item(
 
     verificar_permissao_pedido(pedido, current_user)
 
-    if pedido.status == StatusSchema.CANCELADO or pedido.status == StatusSchema.FINALIZADO:
-        raise HTTPException(status_code=400, detail=f"Esse pedido está {pedido.status}!")
+    if pedido.status == StatusEnum.CANCELADO or pedido.status == StatusEnum.FINALIZADO:
+        raise HTTPException(status_code=400, detail=f"Esse pedido está {pedido.status.value}!")
 
     new_item = ItemPedidoModel(
         pedido_id=pedido_id,
@@ -159,7 +149,7 @@ async def adicionar_item(
         preco_unitario=schema.preco_unitario,
     )
 
-    pedido.adicionar_item_ao_total(new_item.quantidade, new_item.preco_unitario)
+    pedido.adicionar_item_do_total(new_item.quantidade, new_item.preco_unitario)
     db.add(new_item)
     db.add(pedido)
     db.commit()
@@ -172,7 +162,6 @@ async def adicionar_item(
     }
 
 
-# REMOVER ITEM DO PEDIDO (Recalcula o total)
 @order_router.delete("/remover_item/{pedido_id}/{item_id}")
 async def remover_item(
     pedido_id: int,
@@ -187,8 +176,8 @@ async def remover_item(
 
     verificar_permissao_pedido(pedido, current_user)
 
-    if pedido.status == StatusSchema.CANCELADO or pedido.status == StatusSchema.FINALIZADO:
-        return {"message": f"Este pedido já está {pedido.status} e não pode ser alterado!"}
+    if pedido.status == StatusEnum.CANCELADO or pedido.status == StatusEnum.FINALIZADO:
+        return {"message": f"Este pedido já está {pedido.status.value} e não pode ser alterado!"}
 
     item = (
         db.query(ItemPedidoModel)
@@ -201,7 +190,6 @@ async def remover_item(
 
     pedido.subtrair_item_do_total(item.quantidade, item.preco_unitario)
     db.delete(item)
-    db.add(pedido)
     db.commit()
     db.refresh(pedido)
 

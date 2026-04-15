@@ -1,10 +1,20 @@
 import enum
 import os
+
+from dotenv import load_dotenv
 from sqlalchemy import (
-    Boolean, Column, Enum, Float, ForeignKey, Integer, String, create_engine,
+    Boolean,
+    Column,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    create_engine,
 )
 from sqlalchemy.orm import declarative_base, relationship
-from dotenv import load_dotenv
+
 load_dotenv()
 
 db_url = os.getenv("DATABASE_URL")
@@ -16,7 +26,37 @@ engine = create_engine(db_url)
 Base = declarative_base()
 
 
-# --- DEFINIÇÃO DAS TABELAS ---
+# ENUM DE CATEGORIAS
+class CategoriaEnum(enum.Enum):
+    PIZZA = "Pizza"
+    BEBIDA = "Bebida"
+    SOBREMESA = "Sobremesa"
+    LANCHE = "Lanche"
+    ACOMPANHAMENTO = "Acompanhamento"
+    OUTROS = "Outros"
+
+
+# ENUM DE STATUS
+class StatusEnum(enum.Enum):
+    PENDENTE = "Pendente"
+    FINALIZADO = "Finalizado"
+    CANCELADO = "Cancelado"
+
+
+# TABELA DE ITENS DO CARDÁPIO
+class ItemCardapio(Base):
+    __tablename__ = "itens_cardapio"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    nome = Column(String(120), nullable=False, index=True)
+    descricao = Column(Text, nullable=True)
+    preco = Column(Float, nullable=False)
+    categoria = Column(Enum(CategoriaEnum), nullable=False, index=True)
+    disponivel = Column(Boolean, default=True, nullable=False)
+    imagem_url = Column(String(255), nullable=True)  # para mostrar foto no front
+
+
+# TABELA DE USUÁRIOS
 class UserModel(Base):
     __tablename__ = "usuario"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -27,61 +67,48 @@ class UserModel(Base):
     admin = Column(Boolean, nullable=False, default=False)
     pedidos = relationship("PedidoModel", back_populates="usuario")
 
-    def __init__(self, nome, email, senha, ativo=True, admin=False):
-        self.nome = nome
-        self.email = email
-        self.senha = senha
-        self.ativo = ativo
-        self.admin = admin
 
-class Status(enum.Enum):
-    FINALIZADO = "Finalizado"
-    PENDENTE = "Pendente"
-    CANCELADO = "Cancelado"
-
+# TABELA DE PEDIDOS
 class PedidoModel(Base):
     __tablename__ = "pedidos"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     usuario_id = Column(Integer, ForeignKey("usuario.id"), nullable=False)
-    status = Column(Enum(Status), nullable=False, default=Status.PENDENTE)
+    status = Column(Enum(StatusEnum), nullable=False, default=StatusEnum.PENDENTE)
     preco = Column(Float, default=0.0, nullable=False)
+
     usuario = relationship("UserModel", back_populates="pedidos")
-    itens = relationship("ItemPedidoModel", cascade="all, delete-orphan", back_populates="pedido")
+    itens = relationship(
+        "ItemPedidoModel", cascade="all, delete-orphan", back_populates="pedido"
+    )
 
-    def __init__(self, usuario_id, status=Status.PENDENTE, preco=0):
-        self.status = status
-        self.usuario_id = usuario_id
-        self.preco = preco
-
-    def adicionar_item_ao_total(self, quantidade, preco_unitario):
-        valor_novo_item = quantidade * preco_unitario
-        self.preco = (self.preco or 0.0) + valor_novo_item
-        return self.preco
+    def adicionar_item_do_total(self, quantidade, preco_unitario):
+        self.preco += quantidade * preco_unitario
 
     def subtrair_item_do_total(self, quantidade, preco_unitario):
-        valor_removido = quantidade * preco_unitario
-        novo_preco = (self.preco or 0.0) - valor_removido
-        self.preco = max(0.0, novo_preco)
-        return self.preco
+        self.preco -= quantidade * preco_unitario
 
+
+# TABELA DE ITENS DOS PEDIDOS
 class ItemPedidoModel(Base):
     __tablename__ = "itens_pedidos"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+
     quantidade = Column(Integer, nullable=False)
     sabor = Column(String(100), nullable=False)
     tamanho = Column(String(100), nullable=False)
     preco_unitario = Column(Float, nullable=False)
     pedido_id = Column(Integer, ForeignKey("pedidos.id"), nullable=False)
     pedido = relationship("PedidoModel", back_populates="itens")
+    item_cardapio_id = Column(Integer, ForeignKey("itens_cardapio.id"), nullable=True)
 
-    def __init__(self, quantidade, sabor, tamanho, preco_unitario, pedido_id):
-        self.quantidade = quantidade
-        self.sabor = sabor
-        self.tamanho = tamanho
-        self.preco_unitario = preco_unitario
-        self.pedido_id = pedido_id
+    def adicionar_item_do_total(self, quantidade, preco_unitario):
+        self.pedido.adicionar_item_do_total(quantidade, preco_unitario)
+
+    def subtrair_item_do_total(self, quantidade, preco_unitario):
+        self.pedido.subtrair_item_do_total(quantidade, preco_unitario)
 
 
 if __name__ == "__main__":
     Base.metadata.create_all(bind=engine)
-    print("Tabelas criadas com sucesso!")
+    print("Todas as tabelas foram criadas com sucesso!")
+    print("Tabelas criadas: usuario, pedidos, itens_pedidos, itens_cardapio")

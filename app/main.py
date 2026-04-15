@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.routes.auth_routes import auth_router
 from app.routes.order_routes import order_router
+from app.routes.product_routes import product_router
 
 app = FastAPI( 
     title="API Python com FastAPI")
@@ -20,9 +22,13 @@ app.add_middleware(
     allow_headers=["*"],             
 )
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
 # INCLUINDO ROTAS
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(order_router, prefix="/pedidos", tags=["orders"])
+app.include_router(product_router, prefix="/cardapio", tags=["cardapio"])
 
 
 # ROTA RAIZ
