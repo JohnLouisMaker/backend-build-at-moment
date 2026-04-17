@@ -88,24 +88,25 @@ class PedidoModel(Base):
         self.preco -= quantidade * preco_unitario
 
 
-# TABELA DE ITENS DOS PEDIDOS
 class ItemPedidoModel(Base):
     __tablename__ = "itens_pedidos"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
 
+   
+    nome_snapshot = Column(String(100), nullable=False)  
+    preco_unitario = Column(Float, nullable=False)      
+    imagem_url_snapshot = Column(String, nullable=True) 
+
     quantidade = Column(Integer, nullable=False)
-    sabor = Column(String(100), nullable=False)
-    tamanho = Column(String(100), nullable=False)
-    preco_unitario = Column(Float, nullable=False)
+    sabor = Column(String(100), nullable=True) 
+    tamanho = Column(String(100), nullable=True) 
+
+
     pedido_id = Column(Integer, ForeignKey("pedidos.id"), nullable=False)
     pedido = relationship("PedidoModel", back_populates="itens")
+
+
     item_cardapio_id = Column(Integer, ForeignKey("itens_cardapio.id"), nullable=True)
-
-    def adicionar_item_do_total(self, quantidade, preco_unitario):
-        self.pedido.adicionar_item_do_total(quantidade, preco_unitario)
-
-    def subtrair_item_do_total(self, quantidade, preco_unitario):
-        self.pedido.subtrair_item_do_total(quantidade, preco_unitario)
 
 
 if __name__ == "__main__":
